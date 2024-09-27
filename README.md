@@ -1,66 +1,86 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# Görev Atama ve Yönetim Sistemi
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## 1. Giriş
 
-## About Laravel
+### Projenin Amacı:
+Farklı sağlayıcılardan görevleri çekmek, geliştiricilere bu görevleri atamak ve süreci yönetmek.
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+### Genel İşleyiş:
+- `fetch:tasks` komutuyla görevlerin çekilmesi.
+- Görevlerin `TaskAssignmentService` kullanılarak geliştiricilere atanması.
+- API uç noktaları aracılığıyla görev ve görev atamalarının alınması.
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## 2. Komut Tanımı ve Kullanımı
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+### fetch Komutu:
+- Komut konumu: `app/Console/Commands/FetchTasks.php`
+- `fetch:tasks` komutunu çalıştırarak sağlayıcılardan görevlerin çekilmesini ve veritabanına kaydedilmesini sağlar.
+- Görevlerin çekilmesi ve kaydedilmesi işleminden sonra `TaskAssignmentService` sınıfı kullanılarak görevlerin geliştiricilere atanmasını gerçekleştirir.
 
-## Learning Laravel
+#### Kod Yapısı:
+```php
+protected $signature = 'fetch:tasks';
+protected $description = 'Fetch tasks from different providers and save them to the database';
+```
+Komut tanımı ve açıklaması bu şekilde belirlenmiştir.
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.
+#### Kullanımı: 
+- Terminalde php artisan fetch:tasks komutuyla çalıştırılır.
 
-You may also try the [Laravel Bootcamp](https://bootcamp.laravel.com), where you will be guided through building a modern Laravel application from scratch.
+## 3. ProviderService ve Görevlerin Çekilmesi
+- ### ProviderServiceInterface:
+  - Tüm görev sağlayıcılarının uyması gereken bir arayüz sağlar.
+  - getProviderData() metodu, verilerin çekilmesi için kullanılacak olan metottur.
+- ### ProviderService Sınıfı:
+    - app/Service/Providers/ProviderService.php konumunda bulunur.
+    - Görev sağlayıcılarından verileri çeker.
+    - Sağlayıcı URL'lerini config/providers.php dosyasından alır ve her bir URL için GET isteği gönderir.
+    - Gelen yanıtları JSON olarak parse eder ve döner. 
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+## 4. TaskAssignmentService ile Görev Atama
+- ### TaskAssignmentService:
+    - app/Service/TaskAssignmentService.php konumunda bulunur.
+    - #### assignTask() metodu:
+      - Veritabanındaki görevleri ve geliştiricileri alır.
+      - Görevlerin zorluk seviyesini geliştiricilerin yetenekleriyle kıyaslayarak bir saat dilimi hesaplar.
+      - Her geliştiriciye, uygun görevleri atar ve bu bilgiyi TaskAssignment modeline kaydeder.
+- ### Atama Mantığı:
+  - Görevlerin süresi ve zorluk seviyesi, geliştiricilerin zorluk çarpanı (difficulty multiplier) ile bölünür.
+  - Geliştiricinin haftalık çalışma saatine göre hesaplanan görev süresi ile karşılaştırılır ve atama yapılır.
 
-## Laravel Sponsors
+## 5. API Controller ile Verilerin Gösterimi
+- ### APIController:
+    - app/Http/Controllers/APIController.php konumunda bulunur.
+    - Görev atama verilerini ve geliştirici bilgilerini JSON formatında döner.
+    - #### API Uç Noktaları:
+      - /api/tasks: Görevleri getirir.
+      - /api/task-assignments: Görev atamalarını geliştiricilerle birlikte getirir.
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## 6. Veri Modelleri ve İlişkiler
+- ### Task Modeli
+    - Görev verilerini içerir (name, duration, difficulty vb.)
+- ### Developer Modeli:
+    - Geliştirici bilgilerini içerir (name, difficulty_multiplier vb.)
+- ### TaskAssignment Model
+    - Görev ile geliştirici arasındaki atamayı içerir (task_id, developer_id, hours_allocated vb.)
 
-### Premium Partners
+## 7. Task Assignment Kullanımı
+- ### TaskAssignmentService:
+    - TaskFetched olayını dinler ve TaskAssignmentService'i kullanarak görev atamalarını gerçekleştirir.
+- ### Görev Atamanın Çalışması:
+    - fetch:tasks komutunun çalışmasıyla tetiklenen olay (TaskFetched) sonucunda TaskAssignmentService devreye girer ve görev atamasını gerçekleştirir. 
 
-- **[Vehikl](https://vehikl.com/)**
-- **[Tighten Co.](https://tighten.co)**
-- **[WebReinvent](https://webreinvent.com/)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel/)**
-- **[Cyber-Duck](https://cyber-duck.co.uk)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Jump24](https://jump24.co.uk)**
-- **[Redberry](https://redberry.international/laravel/)**
-- **[Active Logic](https://activelogic.com)**
-- **[byte5](https://byte5.de)**
-- **[OP.GG](https://op.gg)**
+## 8. Örnek İşleyiş:
+1. Adım: php artisan migrate komutunu çalıştırarak veritabanını ve ilgili tabloları oluşturun.
+2. Adım:  php artisan db:seed komutu ile geliştiricileri veritabanına dahil edin.
+3. Adım: php artisan fetch:tasks komutunu çalıştırın.
+4. Adım: Sağlayıcıdan veriler çekilecek ve veritabanına kaydedilecek.
+5. Adım: TaskAssignmentService kullanılarak görevler geliştiricilere atanacak.
+6. Adım: /api/task-assignments API uç noktasına giderek atama verilerini görüntüleyin.
+7. Adım:  npm run dev komutunu kullanarak JavaScript, CSS, Sass, Less, vb derleyicisini çalıştırın (Düzenleme yapılacaksa aktif edilmelidir) 
+8. Adım:  npm run watch komutunu kullanarak kaynak dosyası izleyicisi ve otomatik derleyicisini aktif edin. (Düzenleme yapılacaksa aktif edilmelidir)    
+9. Adım php artisan serve komutunu kullanarak sunucuyu çalıştırın.
 
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## 9. Notlar:
+- Görev atamaları, geliştiricilerin yeteneklerine ve görevlerin zorluk seviyelerine göre yapılır.
+- Mail ile verilen mock server yanıtları hatalı ve eksik olduğu için tarafımca düzeltilip /api/tasks adresine eklenmiş ve oradan çekilmiştir.
